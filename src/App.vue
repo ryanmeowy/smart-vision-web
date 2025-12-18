@@ -7,24 +7,28 @@
       </div>
       
       <div class="search-bar">
-        <el-input 
-          v-model="queryText" 
-          placeholder="描述你想找的图片，例如：'雨后的森林' 或 '带文字的合同'" 
-          size="large"
-          class="search-input"
-          @keyup.enter="handleSearch"
-        >
-          <template #append>
-            <el-button @click="handleSearch" :loading="searching">
-              <el-icon><Search /></el-icon> 搜索
-            </el-button>
-          </template>
-        </el-input>
-        
-        <!-- 打开批量上传弹窗 -->
-        <el-button type="primary" size="large" class="upload-btn" @click="openUpload">
-          <el-icon><UploadFilled /></el-icon> 批量导入
-        </el-button>
+        <div class="search-container">
+          <!-- 自定义搜索框 -->
+          <div class="custom-search-input">
+            <input 
+              v-model="queryText" 
+              placeholder="描述你想找的图片，例如：'雨后的森林' 或 '带文字的合同'" 
+              class="search-input"
+              @keyup.enter="handleSearch"
+            />
+            <button @click="handleSearch" :disabled="searching" class="search-button">
+              <el-icon v-if="!searching"><Search /></el-icon>
+              <el-icon v-else class="is-loading"><Loading /></el-icon>
+              <span>搜索</span>
+            </button>
+          </div>
+          
+          <!-- 自定义批量导入按钮 -->
+          <button class="custom-upload-btn" @click="openUpload">
+            <el-icon><UploadFilled /></el-icon>
+            <span>批量导入</span>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -73,8 +77,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { UploadFilled, Search } from '@element-plus/icons-vue'
+import { ref, onMounted } from 'vue'
+import { UploadFilled, Search, Loading } from '@element-plus/icons-vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 // 引入我们的组件
@@ -118,21 +122,211 @@ const handleSearch = async () => {
     searching.value = false
   }
 }
+
+// 添加mock数据
+const loadMockData = () => {
+  results.value = [
+    { 
+      id: '1', 
+      url: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
+      score: 0.95, 
+      filename: 'mountain-landscape.jpg',
+      ocrText: '自然风景照片'
+    },
+    { 
+      id: '2', 
+      url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
+      score: 0.87, 
+      filename: 'forest-mist.jpg',
+      ocrText: '清晨的森林'
+    },
+    { 
+      id: '3', 
+      url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
+      score: 0.78, 
+      filename: 'colorful-sky.jpg'
+    },
+    { 
+      id: '4', 
+      url: 'https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
+      score: 0.92, 
+      filename: 'river-valley.jpg',
+      ocrText: '河流与山谷'
+    },
+    { 
+      id: '5', 
+      url: 'https://images.unsplash.com/photo-1418065460487-3e41a6c84dc5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
+      score: 0.85, 
+      filename: 'green-forest.jpg'
+    },
+    { 
+      id: '6', 
+      url: 'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
+      score: 0.76, 
+      filename: 'rocky-ocean.jpg'
+    },
+    { 
+      id: '7', 
+      url: 'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
+      score: 0.88, 
+      filename: 'colorful-clouds.jpg'
+    },
+    { 
+      id: '8', 
+      url: 'https://images.unsplash.com/photo-1439853949127-fa647821eba0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
+      score: 0.81, 
+      filename: 'sunset-pier.jpg',
+      ocrText: '夕阳下的码头'
+    },
+    { 
+      id: '9', 
+      url: 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
+      score: 0.93, 
+      filename: 'misty-forest.jpg'
+    },
+    { 
+      id: '10', 
+      url: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
+      score: 0.79, 
+      filename: 'mountain-lake.jpg'
+    },
+    { 
+      id: '11', 
+      url: 'https://images.unsplash.com/photo-1470240731273-7821a6eeb6bd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
+      score: 0.84, 
+      filename: 'autumn-forest.jpg'
+    },
+    { 
+      id: '12', 
+      url: 'https://images.unsplash.com/photo-1511497584788-876760111969?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
+      score: 0.91, 
+      filename: 'beach-sand.jpg',
+      ocrText: '沙滩度假'
+    }
+  ]
+}
+
+// 页面加载时显示mock数据
+onMounted(() => {
+  loadMockData()
+})
 </script>
 
 <style>
 /* 全局样式重置 */
-body { margin: 0; background-color: #f5f7fa; font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', Arial, sans-serif; }
+body { 
+  margin: 0; 
+  background-color: #202124; /* Google暗夜模式背景色 */
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', Arial, sans-serif; 
+  color: #e8eaed;
+}
 
-.app-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.app-container { 
+  max-width: 1200px; 
+  margin: 0 auto; 
+  padding: 20px; 
+}
 
 /* 头部样式 */
-.header { text-align: center; margin-bottom: 40px; padding-top: 20px; }
-.logo { font-size: 28px; font-weight: bold; color: #303133; margin-bottom: 20px; }
-.tag { font-size: 14px; background: #ecf5ff; color: #409eff; padding: 2px 8px; border-radius: 4px; vertical-align: middle; }
+.header { 
+  text-align: center; 
+  margin-bottom: 40px; 
+  padding-top: 20px; 
+}
+.logo { 
+  font-size: 28px; 
+  font-weight: bold; 
+  color: #e8eaed; /* Google暗夜模式文字颜色 */
+  margin-bottom: 20px; 
+}
+.tag { 
+  font-size: 14px; 
+  background: #303134; /* Google暗夜模式元素背景色 */
+  color: #9aa0a6; /* Google暗夜模式次要文字颜色 */
+  padding: 2px 8px; 
+  border-radius: 4px; 
+  vertical-align: middle; 
+}
 
-.search-bar { display: flex; justify-content: center; gap: 15px; max-width: 800px; margin: 0 auto; }
-.search-input { flex: 1; }
+.search-bar { 
+  display: flex; 
+  justify-content: center; 
+  max-width: 800px; 
+  margin: 0 auto; 
+}
+
+.search-container {
+  display: flex;
+  gap: 15px;
+  width: 100%;
+}
+
+/* 自定义搜索框样式 */
+.custom-search-input {
+  flex: 1;
+  display: flex;
+  border-radius: 24px;
+  background-color: #303134;
+  border: 1px solid #5f6368;
+  padding: 2px;
+}
+
+.search-input {
+  flex: 1;
+  background-color: #303134;
+  color: #e8eaed;
+  border: none;
+  outline: none;
+  padding: 12px 16px;
+  border-radius: 24px 0 0 24px;
+  font-size: 14px;
+}
+
+.search-input::placeholder {
+  color: #9aa0a6;
+}
+
+.search-button {
+  border-radius: 0 24px 24px 0;
+  background-color: #303134;
+  color: #e8eaed;
+  border: none;
+  padding: 0 24px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.search-button:hover:not(:disabled) {
+  background-color: #3c4043;
+}
+
+.search-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* 自定义上传按钮样式 - 更深的颜色 */
+.custom-upload-btn {
+  border-radius: 24px;
+  background-color: #3c4043; /* 更深的灰色 */
+  color: #e8eaed;
+  border: none;
+  padding: 0 24px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.custom-upload-btn:hover {
+  background-color: #5f6368; /* 悬停时稍微亮一点 */
+}
 
 /* 瀑布流样式 (核心) */
 .waterfall {
@@ -150,18 +344,38 @@ body { margin: 0; background-color: #f5f7fa; font-family: 'Helvetica Neue', Helv
 }
 
 /* 卡片内部样式 */
-.image-wrapper { position: relative; width: 100%; min-height: 100px; background: #eee; }
+.image-wrapper { position: relative; width: 100%; min-height: 100px; background: #303134; }
 .card-img { width: 100%; display: block; }
 .score-tag {
   position: absolute; top: 8px; right: 8px;
   background: rgba(0,0,0,0.6); color: #fff;
   font-size: 12px; padding: 2px 6px; border-radius: 4px;
 }
-.card-info { padding: 10px; background: #fff; }
+.card-info { padding: 10px; background: #303134; }
 .ocr-text {
-  font-size: 12px; color: #666; margin: 0 0 5px 0;
+  font-size: 12px; color: #9aa0a6; margin: 0 0 5px 0;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.filename { font-size: 13px; color: #333; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.filename { font-size: 13px; color: #e8eaed; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .empty-state { margin-top: 100px; }
+
+/* Empty状态样式 */
+:deep(.el-empty) {
+  background-color: #202124;
+}
+:deep(.el-empty__description) {
+  color: #9aa0a6;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .search-container {
+    flex-direction: column;
+  }
+  
+  .custom-upload-btn {
+    width: fit-content;
+    align-self: center;
+  }
+}
 </style>
