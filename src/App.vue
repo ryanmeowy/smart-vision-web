@@ -41,7 +41,7 @@
       <!-- 纯CSS瀑布流布局 -->
       <div class="waterfall" v-else>
         <div class="waterfall-item" v-for="item in results" :key="item.id">
-          <el-card :body-style="{ padding: '0px' }" shadow="hover">
+          <div class="image-card">
             <div class="image-wrapper">
               <!-- 图片点击预览 -->
               <el-image 
@@ -49,7 +49,10 @@
                 loading="lazy"
                 fit="cover"
                 :preview-src-list="[item.url]"
+                :initial-index="results.indexOf(item)"
+                preview-teleported
                 class="card-img"
+                hide-on-click-modal
               />
               <!-- 显示匹配分数 (Score) -->
               <div class="score-tag">
@@ -60,13 +63,13 @@
             <div class="card-info">
               <!-- 显示OCR文字摘要(如果有) -->
               <p class="ocr-text" v-if="item.ocrText">
-                <el-tag size="small" type="warning">含文字</el-tag>
+                <span class="custom-tag warning">含文字</span>
                 {{ item.ocrText }}
               </p>
               <!-- 文件名 -->
               <p class="filename">{{ item.filename || '未命名图片' }}</p>
             </div>
-          </el-card>
+          </div>
         </div>
       </div>
     </main>
@@ -343,8 +346,25 @@ body {
   margin-bottom: 20px;
 }
 
+/* 新增图片卡片样式 */
+.image-card {
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background: #303134;
+}
+
+.image-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
 /* 卡片内部样式 */
-.image-wrapper { position: relative; width: 100%; min-height: 100px; background: #303134; }
+.image-wrapper { 
+  position: relative; 
+  width: 100%; 
+  min-height: 100px;
+}
 .card-img { width: 100%; display: block; }
 .score-tag {
   position: absolute; top: 8px; right: 8px;
@@ -353,11 +373,44 @@ body {
 }
 .card-info { padding: 10px; background: #303134; }
 .ocr-text {
-  font-size: 12px; color: #9aa0a6; margin: 0 0 5px 0;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: 12px; 
+  color: #9aa0a6; 
+  margin: 0 0 5px 0;
+  display: flex;
+  align-items: center;
 }
-.filename { font-size: 13px; color: #e8eaed; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.filename { 
+  font-size: 13px; 
+  color: #e8eaed; 
+  margin: 0; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+}
+
 .empty-state { margin-top: 100px; }
+
+/* 自定义标签样式 */
+.custom-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 12px; /* 更圆的圆角 */
+  line-height: 1;
+  margin-right: 6px;
+  background: transparent; /* 去掉背景色 */
+  border: 1px solid #8ab4f8; /* 淡蓝色边框 */
+  color: #8ab4f8; /* 淡蓝色文字 */
+  flex-shrink: 0;
+}
+
+.custom-tag.warning {
+  background: transparent;
+  color: #8ab4f8;
+  border: 1px solid #8ab4f8;
+}
 
 /* Empty状态样式 */
 :deep(.el-empty) {
