@@ -126,9 +126,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
-import { UploadFilled } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {computed, ref} from 'vue'
+import {UploadFilled} from '@element-plus/icons-vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import axios from 'axios'
 import OSS from 'ali-oss'
 
@@ -137,6 +137,7 @@ import OSS from 'ali-oss'
 const phase = ref('IDLE')
 const visible = ref(false)
 const isUploading = ref(false) // 这是一个总的 Loading 状态
+const accessToken = ref('') // 用户输入的访问口令
 
 // 文件列表，每个 Item 包含完整状态机
 // Item { file: File, status: string, uploadPercent: number, objectKey: string, errorMsg: string }
@@ -186,10 +187,14 @@ const handleFileSelect = (uploadFile) => {
 let ossClient = null
 const initOssClient = async () => {
   try {
-    const res = await axios.get('/api/v1/oss/sts')
+    const res = await axios.get('/api/v1/auth/sts', {
+      headers: {
+        'X-Access-Token': accessToken.value
+      }
+    })
     const data = res.data.data
     ossClient = new OSS({
-      region: 'oss-cn-hangzhou', // 请确保和后端配置一致
+      region: 'oss-cn-shanghai', // 请确保和后端配置一致
       accessKeyId: data.accessKeyId,
       accessKeySecret: data.accessKeySecret,
       stsToken: data.securityToken,
@@ -198,7 +203,7 @@ const initOssClient = async () => {
     })
     return true
   } catch (e) {
-    ElMessage.error('无法获取上传凭证，请检查后端服务')
+    ElMessage.error('无法获取上传凭证，请检查后端服务或口令是否正确')
     return false
   }
 }
@@ -206,6 +211,22 @@ const initOssClient = async () => {
 // --- 3. 主流程入口 (点击开始/重试) ---
 const startPipeline = async () => {
   if (customFileList.value.length === 0) return
+
+  // 提示用户输入访问口令
+  const { value: token } = await ElMessageBox.prompt('口令联系管理员获取: ryanxys@gmail.com', '身份验证', {
+    confirmButtonText: '确认',
+    cancelButtonText: '取消',
+    inputType: 'password',
+    inputPlaceholder: '请输入访问口令',
+    inputValidator: (value) => {
+      if (!value || value.trim() === '') {
+        return '口令不能为空'
+      }
+      return true
+    }
+  })
+
+  accessToken.value = token
 
   // 初始化 OSS 客户端
   const ready = await initOssClient()
@@ -297,7 +318,11 @@ const processInBackend = async (items) => {
 
     try {
       // 调用后端同步接口 (后端内部会重试)
-      const res = await axios.post('/api/v1/vision/batch-process', payload)
+      const res = await axios.post('/api/v1/image/batch-process', payload, {
+        headers: {
+          'X-Access-Token': accessToken.value
+        }
+      })
       const resultData = res.data.data // { successCount, failureCount, failures: [] }
 
       // 更新进度
@@ -351,6 +376,7 @@ const resetState = () => {
   processedCount.value = 0
   totalSubmitCount.value = 0
   isUploading.value = false
+  accessToken.value = ''
 }
 
 const closeDialog = () => {
