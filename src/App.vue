@@ -17,9 +17,9 @@
               @keyup.enter="handleSearch"
             />
             <button @click="handleSearch" :disabled="searching" class="search-button">
-              <el-icon v-if="!searching"><Search /></el-icon>
-              <el-icon v-else class="is-loading"><Loading /></el-icon>
-              <span>搜索</span>
+              <span class="magic-wand">✨</span>
+              <el-icon v-if="searching" class="is-loading"><Loading /></el-icon>
+              <span>AI Search</span>
             </button>
           </div>
           
@@ -80,10 +80,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { UploadFilled, Search, Loading } from '@element-plus/icons-vue'
+import {onMounted, ref} from 'vue'
+import {Loading, UploadFilled} from '@element-plus/icons-vue'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import {ElMessage} from 'element-plus'
 // 引入我们的组件
 import BatchUploadDialog from './components/BatchUploadDialog.vue'
 
@@ -300,6 +300,30 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.magic-wand {
+  font-size: 16px;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: scale(1.1) rotate(5deg);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2) rotate(-5deg);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(1.1) rotate(3deg);
+    opacity: 0.9;
+  }
 }
 
 .search-button:hover:not(:disabled) {
