@@ -1,25 +1,25 @@
-<!-- src/components/BatchUploadDialog.vue -->
 <template>
   <el-dialog
-    v-model="visible"
-    title="批量导入图片"
-    width="700px"
-    :close-on-click-modal="false"
-    :before-close="handleBeforeClose"
-    @closed="resetState"
+      v-model="visible"
+      title="批量导入图片"
+      width="720px"
+      :close-on-click-modal="false"
+      :before-close="handleBeforeClose"
+      @closed="resetState"
   >
-    <!-- ==================== 阶段 1: 文件选择与 OSS 上传 ==================== -->
-    <div v-if="phase === 'UPLOAD_PHASE'">
-      <!-- 上传控件 (仅在没开始上传时显示，或者允许追加) -->
+    <!-- ==================== 界面状态 1: 文件选择与列表展示 ==================== -->
+    <div v-if="phase === 'IDLE' || phase === 'UPLOADING'">
+
+      <!-- 1.1 拖拽上传区 (只有非上传状态才显示，防止误操作) -->
       <div class="upload-area" v-if="!isUploading">
         <el-upload
-          action="#"
-          multiple
-          :auto-upload="false"
-          :show-file-list="false"
-          :on-change="handleFileSelect"
-          accept=".jpg,.jpeg,.png"
-          drag
+            action="#"
+            multiple
+            :auto-upload="false"
+            :show-file-list="false"
+            :on-change="handleFileSelect"
+            accept=".jpg,.jpeg,.png"
+            drag
         >
           <el-icon class="el-icon--upload"><upload-filled /></el-icon>
           <div class="el-upload__text">
@@ -28,403 +28,390 @@
         </el-upload>
       </div>
 
-      <!-- 文件列表状态展示 (核心交互区域) -->
-      <div v-if="customFileList.length > 0" class="file-list-container">
+      <!-- 1.2 文件列表 (核心展示区) -->
+      <div v-if="customFileList.length > 0" class="file-list-box">
         <div class="list-header">
-          <span>待处理文件: {{ customFileList.length }}</span>
-          <el-button link type="primary" @click="customFileList = []" :disabled="isUploading">清空</el-button>
+          <span>待处理清单 ({{ customFileList.length }})</span>
+          <el-button
+              v-if="!isUploading"
+              link type="primary"
+              @click="customFileList = []"
+          >
+            清空列表
+          </el-button>
         </div>
-        
-        <el-scrollbar height="300px">
+
+        <el-scrollbar height="320px">
           <div v-for="(item, index) in customFileList" :key="index" class="file-item">
-            <div class="file-info">
+            <div class="file-row">
               <span class="file-name" :title="item.file.name">{{ item.file.name }}</span>
-              <!-- 状态标签 -->
-              <el-tag v-if="item.status === 'ready'" size="small" type="info">待上传</el-tag>
-              <el-tag v-else-if="item.status === 'uploading'" size="small">上传中 {{ item.percent }}%</el-tag>
-              <el-tag v-else-if="item.status === 'success'" size="small" type="success">OSS上传成功</el-tag>
-              <el-tag v-else-if="item.status === 'error'" size="small" type="danger">失败</el-tag>
+
+              <!-- 状态徽章 -->
+              <div class="file-status">
+                <el-tag v-if="item.status === 'ready'" type="info" size="small">准备就绪</el-tag>
+                <el-tag v-else-if="item.status === 'uploading_oss'" size="small">OSS上传中...</el-tag>
+                <el-tag v-else-if="item.status === 'oss_success'" type="success" size="small">OSS已完成</el-tag>
+                <el-tag v-else-if="item.status === 'processing_backend'" type="warning" size="small">AI处理中...</el-tag>
+                <el-tag v-else-if="item.status === 'done'" type="success" effect="dark" size="small">✅ 入库成功</el-tag>
+                <el-tag v-else-if="item.status === 'error'" type="danger" size="small">失败</el-tag>
+              </div>
             </div>
-            <!-- 进度条 -->
-            <el-progress 
-              :percentage="item.percent" 
-              :status="item.status === 'error' ? 'exception' : (item.status === 'success' ? 'success' : '')" 
-              :show-text="false"
-              :stroke-width="2"
+
+            <!-- 错误提示 -->
+            <div v-if="item.status === 'error'" class="error-msg">
+              {{ item.errorMsg }}
+            </div>
+
+            <!-- 进度条 (仅在上传OSS时显示) -->
+            <el-progress
+                v-if="item.status === 'uploading_oss'"
+                :percentage="item.uploadPercent"
+                :show-text="false"
+                :stroke-width="2"
             />
           </div>
         </el-scrollbar>
       </div>
     </div>
 
-    <!-- ==================== 阶段 2: 后端 AI 处理 (轮询中) ==================== -->
-    <div v-else-if="phase === 'PROCESS_PHASE'" class="processing-box">
-      <el-progress type="dashboard" :percentage="backendProgress" />
+    <!-- ==================== 界面状态 2: 后端处理进度 (大盘展示) ==================== -->
+    <div v-else-if="phase === 'PROCESSING'" class="processing-panel">
+      <el-progress type="dashboard" :percentage="overallProgress" />
       <div class="status-text">
-        <h3>AI 正在分析语义与入库...</h3>
-        <p>已处理: {{ processedCount }} / {{ totalCount }}</p>
-        <p class="sub-tip">后端异步处理中，请勿关闭窗口</p>
+        <h3>正在进行 AI 向量化与索引...</h3>
+        <p>已处理: {{ processedCount }} / {{ totalSubmitCount }}</p>
+        <p class="tip">为防止请求超时，系统正在分批提交，请勿关闭窗口</p>
       </div>
     </div>
 
-    <!-- ==================== 阶段 3: 最终结果汇总 ==================== -->
-    <div v-else-if="phase === 'Result_PHASE'" class="result-box">
+    <!-- ==================== 界面状态 3: 最终结果 ==================== -->
+    <div v-else-if="phase === 'FINISHED'" class="result-panel">
       <el-result
-        icon="success"
-        title="处理完成"
-        :sub-title="`成功入库 ${finalResult.successCount} 张，失败 ${finalResult.failureCount} 张`"
+          :icon="finalStats.fail > 0 ? 'warning' : 'success'"
+          :title="finalStats.fail > 0 ? '处理完成 (部分失败)' : '全部成功'"
+          :sub-title="`成功: ${finalStats.success} | 失败: ${finalStats.fail}`"
       >
         <template #extra>
-          <el-button type="primary" @click="closeDialog">关闭</el-button>
+          <el-button @click="closeDialog">关闭</el-button>
+          <el-button v-if="finalStats.fail > 0" type="primary" @click="retryFailures">
+            重试失败项
+          </el-button>
         </template>
       </el-result>
-      
-      <!-- 如果有后端处理失败的，展示在这里 -->
-      <div v-if="finalResult.failureCount > 0" class="error-log">
-        <p>处理失败详情 (AI/数据库错误):</p>
-        <ul>
-          <li v-for="err in finalResult.failures" :key="err.objectKey">
-            {{ err.originalName }}: {{ err.errorMessage }}
-          </li>
-        </ul>
-      </div>
     </div>
 
-    <!-- ==================== 底部按钮区 ==================== -->
+    <!-- ==================== 底部按钮 ==================== -->
     <template #footer>
-      <div v-if="phase === 'UPLOAD_PHASE'" class="dialog-footer">
-        <span class="summary-text" v-if="stats.total > 0">
-          成功: {{ stats.success }} | 失败: {{ stats.error }}
-        </span>
+      <div v-if="phase === 'IDLE' || phase === 'UPLOADING'" class="footer-actions">
+        <div class="summary">
+          <span v-if="stats.error > 0" class="text-danger">失败: {{ stats.error }} 项</span>
+        </div>
 
-        <!-- 场景 A: 还没开始，或者全部成功 -->
-        <el-button 
-          v-if="stats.error === 0 && stats.success < stats.total" 
-          type="primary" 
-          @click="startOssUpload" 
-          :loading="isUploading"
-          :disabled="stats.total === 0"
-        >
-          {{ isUploading ? '正在上传OSS...' : '开始上传' }}
-        </el-button>
+        <div class="buttons">
+          <el-button @click="visible = false" :disabled="isUploading">取消</el-button>
 
-        <!-- 场景 B: 有失败的，显示重试按钮 -->
-        <el-button 
-          v-if="stats.error > 0" 
-          type="danger" 
-          @click="retryFailedUploads" 
-          :loading="isUploading"
-        >
-          重试失败项 ({{ stats.error }})
-        </el-button>
-
-        <!-- 场景 C: 有成功的，允许提交给后端 -->
-        <el-button 
-          v-if="stats.success > 0 && !isUploading" 
-          type="success" 
-          @click="submitToBackend"
-        >
-          提交处理 ({{ stats.success }}张)
-        </el-button>
+          <!-- 核心按钮：一键开始 (包含上传+处理) -->
+          <el-button
+              type="primary"
+              @click="startPipeline"
+              :loading="isUploading"
+              :disabled="customFileList.length === 0"
+          >
+            {{ stats.error > 0 ? '重试失败项' : '开始上传与处理' }}
+          </el-button>
+        </div>
       </div>
     </template>
   </el-dialog>
 </template>
 
 <script setup>
-import { ref, computed, reactive, onUnmounted } from 'vue'
-import { UploadFilled } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {computed, ref} from 'vue'
+import {UploadFilled} from '@element-plus/icons-vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import axios from 'axios'
-import OSS from 'ali-oss' // 务必安装: npm install ali-oss
+import OSS from 'ali-oss'
 
-// --- 核心状态 ---
+// --- 数据结构定义 ---
+// phase: 'IDLE' (空闲) -> 'UPLOADING' (直传OSS中) -> 'PROCESSING' (后端分批处理中) -> 'FINISHED' (结束)
+const phase = ref('IDLE')
 const visible = ref(false)
-// 阶段: UPLOAD_PHASE (直传OSS) -> PROCESS_PHASE (后端AI处理) -> Result_PHASE (结果)
-const phase = ref('UPLOAD_PHASE') 
-const isUploading = ref(false) // 是否正在直传OSS中
+const isUploading = ref(false) // 这是一个总的 Loading 状态
+const accessToken = ref('') // 用户输入的访问口令
 
-// 自定义文件列表，存储每个文件的详细状态
-// Item结构: { file: File, status: 'ready'|'uploading'|'success'|'error', percent: 0, objectKey: '' }
+// 文件列表，每个 Item 包含完整状态机
+// Item { file: File, status: string, uploadPercent: number, objectKey: string, errorMsg: string }
+// status枚举: 'ready', 'uploading_oss', 'oss_success', 'processing_backend', 'done', 'error'
 const customFileList = ref([])
 
-// 后端轮询相关
-const taskId = ref('')
-const backendProgress = ref(0)
+// 进度统计相关
 const processedCount = ref(0)
-const totalCount = ref(0)
-const finalResult = ref({})
-let pollTimer = null
-
-// --- 计算属性: 统计当前上传状态 ---
-const stats = computed(() => {
-  let success = 0, error = 0, total = customFileList.value.length
-  customFileList.value.forEach(item => {
-    if (item.status === 'success') success++
-    if (item.status === 'error') error++
-  })
-  return { total, success, error }
+const totalSubmitCount = ref(0)
+const overallProgress = computed(() => {
+  if (totalSubmitCount.value === 0) return 0
+  return Math.floor((processedCount.value / totalSubmitCount.value) * 100)
 })
 
-// --- 对外暴露方法 ---
+// 统计当前列表状态
+const stats = computed(() => {
+  let success = 0, error = 0, total = customFileList.value.length
+  customFileList.value.forEach(i => {
+    if (i.status === 'done') success++
+    if (i.status === 'error') error++
+  })
+  return { success, error, total }
+})
+
+// 最终结果统计 (用于结果页)
+const finalStats = ref({ success: 0, fail: 0 })
+
+// --- 暴露给父组件的方法 ---
 const open = () => {
   resetState()
   visible.value = true
 }
 defineExpose({ open })
 
-// --- 逻辑 1: 文件选择 ---
+// --- 1. 文件选择 ---
 const handleFileSelect = (uploadFile) => {
-  // Element Plus 的 onChange 会多次触发，这里做简单的去重或追加
-  // 我们只关心 raw (原生File对象)
-  const rawFile = uploadFile.raw
-  // 包装成我们的状态对象
   customFileList.value.push({
-    file: rawFile,
-    status: 'ready',
-    percent: 0,
-    objectKey: '' // 上传成功后回填
+    file: uploadFile.raw,
+    status: 'ready', // 初始状态
+    uploadPercent: 0,
+    objectKey: '',   // 上传成功后填入
+    errorMsg: ''
   })
 }
 
-// --- 逻辑 2: 获取 STS Token (关键安全步骤) ---
+// --- 2. 获取 STS Token (鉴权) ---
 let ossClient = null
 const initOssClient = async () => {
   try {
-    // 调用后端获取临时凭证
-    const res = await axios.get('/api/v1/oss/sts')
-    const { accessKeyId, accessKeySecret, securityToken, region, bucket } = res.data.data
-    
-    // 初始化阿里 OSS SDK
+    const res = await axios.get('/api/v1/auth/sts', {
+      headers: {
+        'X-Access-Token': accessToken.value
+      }
+    })
+    const data = res.data.data
     ossClient = new OSS({
-      region: region || 'oss-cn-shanghai',
-      accessKeyId,
-      accessKeySecret,
-      stsToken: securityToken,
-      bucket: bucket,
-      secure: true // 使用 HTTPS
+      region: 'oss-cn-shanghai', // 请确保和后端配置一致
+      accessKeyId: data.accessKeyId,
+      accessKeySecret: data.accessKeySecret,
+      stsToken: data.securityToken,
+      bucket: 'your-bucket-name', // 这里替换成你真实的 Bucket 名字
+      secure: true
     })
     return true
   } catch (e) {
-    console.error('STS获取失败', e)
-    ElMessage.error('无法获取上传凭证，请检查后端服务')
+    ElMessage.error('无法获取上传凭证，请检查后端服务或口令是否正确')
     return false
   }
 }
 
-// --- 逻辑 3: 执行 OSS 上传 (支持重试) ---
-const startOssUpload = async () => {
+// --- 3. 主流程入口 (点击开始/重试) ---
+const startPipeline = async () => {
   if (customFileList.value.length === 0) return
-  
-  // 1. 初始化/刷新 Token
+
+  // 提示用户输入访问口令
+  const { value: token } = await ElMessageBox.prompt('口令联系管理员获取: ryanxys@gmail.com', '身份验证', {
+    confirmButtonText: '确认',
+    cancelButtonText: '取消',
+    inputType: 'password',
+    inputPlaceholder: '请输入访问口令',
+    inputValidator: (value) => {
+      if (!value || value.trim() === '') {
+        return '口令不能为空'
+      }
+      return true
+    }
+  })
+
+  accessToken.value = token
+
+  // 初始化 OSS 客户端
   const ready = await initOssClient()
   if (!ready) return
 
   isUploading.value = true
 
-  // 2. 遍历列表，只上传状态为 'ready' 或 'error' 的文件
-  const uploadPromises = customFileList.value.map(async (item) => {
-    if (item.status === 'success') return // 已经成功的跳过
+  try {
+    // 步骤 A: 过滤出需要上传 OSS 的文件 (状态是 ready 或 error 且没有 key)
+    const filesToUpload = customFileList.value.filter(item =>
+        item.status === 'ready' || (item.status === 'error' && !item.objectKey)
+    )
 
-    item.status = 'uploading'
-    item.percent = 0
+    // 执行 OSS 直传
+    if (filesToUpload.length > 0) {
+      phase.value = 'UPLOADING' // 界面显示上传状态
+      await uploadToOss(filesToUpload)
+    }
+
+    // 步骤 B: 过滤出需要提交后端的 (OSS 成功了，但还没入库成功的)
+    const filesToProcess = customFileList.value.filter(item =>
+        (item.status === 'oss_success') || (item.status === 'error' && item.objectKey)
+    )
+
+    if (filesToProcess.length > 0) {
+      phase.value = 'PROCESSING' // 界面切换到大盘进度条
+      await processInBackend(filesToProcess)
+    }
+
+    // 流程结束，展示结果
+    phase.value = 'FINISHED'
+
+  } catch (e) {
+    console.error('Pipeline Error', e)
+    ElMessage.error('流程异常中断')
+  } finally {
+    isUploading.value = false
+  }
+}
+
+// --- 4. 具体的 OSS 上传逻辑 ---
+const uploadToOss = async (items) => {
+  // 并发上传，Promise.all
+  const uploads = items.map(async (item) => {
+    item.status = 'uploading_oss'
+    item.errorMsg = ''
 
     try {
-      // 构造存储路径: images/2024/05/timestamp_filename
-      const filename = `${Date.now()}_${item.file.name}`
-      const storeAs = `images/${new Date().toISOString().split('T')[0]}/${filename}`
+      // 构造文件名: images/2024/12/18/timestamp_filename
+      const dateStr = new Date().toISOString().split('T')[0]
+      const storeAs = `images/${dateStr}/${Date.now()}_${item.file.name}`
 
-      // 执行直传
       const result = await ossClient.put(storeAs, item.file, {
-        // 进度回调
-        progress: (p) => {
-          item.percent = Math.floor(p * 100)
-        }
+        progress: (p) => { item.uploadPercent = Math.floor(p * 100) }
       })
 
-      // 成功: 记录 objectKey (发给后端只要这个 Key，不要完整 URL)
-      item.status = 'success'
-      item.objectKey = result.name 
-      item.percent = 100
+      // 成功，保存 Key
+      item.objectKey = result.name
+      item.status = 'oss_success'
     } catch (e) {
-      console.error('单文件上传失败', e)
+      console.error(e)
       item.status = 'error'
-      item.percent = 0
+      item.errorMsg = '网络传输失败'
     }
   })
 
-  // 等待所有上传完成 (无论成功失败)
-  await Promise.all(uploadPromises)
-  isUploading.value = false
-  
-  if (stats.value.error > 0) {
-    ElMessage.warning(`有 ${stats.value.error} 个文件上传失败，请点击重试`)
-  } else {
-    ElMessage.success('所有文件上传OSS成功，请提交处理')
-  }
+  await Promise.all(uploads)
 }
 
-// --- 逻辑 4: 重试失败项 (复用上传逻辑) ---
-const retryFailedUploads = () => {
-  // startOssUpload 内部逻辑会自动挑选非 success 的文件进行重传
-  // 这里再次调用即可
-  startOssUpload()
-}
+// --- 5. 具体的后端处理逻辑 (分批提交) ---
+const processInBackend = async (items) => {
+  totalSubmitCount.value = items.length
+  processedCount.value = 0
 
-// --- 逻辑 5: 提交给后端并开始轮询 ---
-const submitToBackend = async () => {
-  // 1. 提取所有成功的 Key
-  const successKeys = customFileList.value
-    .filter(item => item.status === 'success')
-    .map(item => item.objectKey)
+  // 核心策略：切片 (Chunking)，每 5 个发一次请求，防止超时
+  const CHUNK_SIZE = 5
 
-  if (successKeys.length === 0) return
+  for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+    const chunk = items.slice(i, i + CHUNK_SIZE)
 
-  // 切换界面状态
-  phase.value = 'PROCESS_PHASE'
-  
-  try {
-    // 2. 调用后端异步接口，提交任务
-    // 接口: POST /api/v1/vision/batch-process-async
-    // 参数: ["images/xx.jpg", "images/yy.jpg"]
-    const res = await axios.post('/api/v1/vision/batch-process-async', successKeys)
-    
-    // 3. 拿到 TaskID，开始轮询
-    taskId.value = res.data.data
-    startPolling()
-    
-  } catch (e) {
-    console.error(e)
-    ElMessage.error('提交后端任务失败')
-    phase.value = 'UPLOAD_PHASE' // 回退
-  }
-}
+    // 先把这一批的状态改为处理中
+    chunk.forEach(it => it.status = 'processing_backend')
 
-// --- 逻辑 6: 轮询状态 ---
-const startPolling = () => {
-  pollTimer = setInterval(async () => {
+    // 构造请求参数 DTO: [{ key: "...", fileName: "..." }]
+    const payload = chunk.map(it => ({
+      key: it.objectKey,
+      fileName: it.file.name
+    }))
+
     try {
-      const res = await axios.get(`/api/v1/vision/task/${taskId.value}`)
-      const task = res.data.data // AsyncBatchTask 对象
-      
-      // 更新进度显示
-      totalCount.value = task.total
-      processedCount.value = task.processed
-      if (task.total > 0) {
-        backendProgress.value = Math.floor((task.processed / task.total) * 100)
-      }
+      // 调用后端同步接口 (后端内部会重试)
+      const res = await axios.post('/api/v1/image/batch-process', payload, {
+        headers: {
+          'X-Access-Token': accessToken.value
+        }
+      })
+      const resultData = res.data.data // { successCount, failureCount, failures: [] }
 
-      // 判断终态
-      if (task.status === 'COMPLETED' || task.status === 'FAILED') {
-        clearInterval(pollTimer)
-        finalResult.value = task.result || {}
-        // 稍微延时展示结果
-        setTimeout(() => { phase.value = 'Result_PHASE' }, 500)
-      }
+      // 更新进度
+      processedCount.value += chunk.length
+
+      // 根据后端返回的失败列表，更新每个文件的状态
+      // 失败列表里的 item 结构: { objectKey, errorMessage }
+      const failedList = resultData.failures || []
+
+      chunk.forEach(feItem => {
+        // 在失败列表里找，找得到就是失败，找不到就是成功
+        const failRecord = failedList.find(f => f.objectKey === feItem.objectKey)
+
+        if (failRecord) {
+          feItem.status = 'error'
+          feItem.errorMsg = failRecord.errorMessage // 显示后端给的原因(如 AI超时)
+        } else {
+          feItem.status = 'done' // 全部成功
+        }
+      })
+
     } catch (e) {
-      console.warn('轮询异常', e)
+      // 如果整个请求挂了 (500/网络断了)
+      chunk.forEach(it => {
+        it.status = 'error'
+        it.errorMsg = '服务器连接失败'
+      })
+      processedCount.value += chunk.length
     }
-  }, 1000) // 1秒一次
-}
-
-// --- 辅助逻辑: 关闭与重置 ---
-const handleBeforeClose = (done) => {
-  if (phase.value === 'PROCESS_PHASE') {
-    ElMessageBox.confirm('后台正在处理数据，关闭窗口不会停止任务，但您将无法查看进度。确定关闭吗？')
-      .then(() => done())
-      .catch(() => {})
-  } else {
-    done()
   }
+
+  // 统计最终结果
+  finalStats.value.success = customFileList.value.filter(i => i.status === 'done').length
+  finalStats.value.fail = customFileList.value.filter(i => i.status === 'error').length
 }
 
+// --- 6. 重试逻辑 (Retry) ---
+const retryFailures = () => {
+  // 重置状态
+  phase.value = 'IDLE' // 回到列表页
+
+  // 这里的关键是：不清除 customFileList，只是把 error 的项让用户看到
+  // 用户再次点击 "开始上传与处理" 时，startPipeline 会自动筛选状态为 error 的项
+}
+
+// --- 7. 辅助方法 ---
 const resetState = () => {
-  if (pollTimer) clearInterval(pollTimer)
   visible.value = false
-  phase.value = 'UPLOAD_PHASE'
+  phase.value = 'IDLE'
   customFileList.value = []
-  backendProgress.value = 0
-  taskId.value = ''
+  processedCount.value = 0
+  totalSubmitCount.value = 0
+  isUploading.value = false
+  accessToken.value = ''
 }
 
 const closeDialog = () => {
   visible.value = false
-  // 触发父组件刷新列表
+  // 通知父组件刷新
   // emit('refresh')
 }
 
-// 组件卸载时兜底清理定时器
-onUnmounted(() => {
-  if (pollTimer) clearInterval(pollTimer)
-})
+const handleBeforeClose = (done) => {
+  if (isUploading.value) {
+    ElMessageBox.confirm('任务正在进行中，关闭将中断后续操作。确定关闭？')
+        .then(() => done())
+        .catch(() => {})
+  } else {
+    done()
+  }
+}
 </script>
 
 <style scoped>
-.upload-area {
-  margin-bottom: 20px;
-}
-.file-list-container {
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  padding: 10px;
-}
-.list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #ebeef5;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  font-size: 14px;
-  color: #606266;
-}
-.file-item {
-  margin-bottom: 12px;
-}
-.file-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-  font-size: 13px;
-}
-.file-name {
-  max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.processing-box {
-  text-align: center;
-  padding: 40px 0;
-}
-.status-text {
-  margin-top: 20px;
-}
-.sub-tip {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 5px;
-}
-.result-box {
-  padding: 20px;
-}
-.error-log {
-  background: #fef0f0;
-  padding: 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #f56c6c;
-  max-height: 150px;
-  overflow-y: auto;
-}
-.dialog-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.summary-text {
-  font-size: 13px;
-  color: #606266;
-}
+.upload-area { margin-bottom: 15px; }
+.file-list-box { border: 1px solid #e4e7ed; border-radius: 4px; padding: 10px; background: #fff; }
+.list-header { display: flex; justify-content: space-between; margin-bottom: 10px; color: #606266; font-size: 14px; }
+
+.file-item { padding: 8px 0; border-bottom: 1px dashed #f2f2f2; }
+.file-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.file-name { font-size: 13px; color: #333; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.error-msg { font-size: 12px; color: #f56c6c; margin-bottom: 4px; }
+
+.processing-panel { text-align: center; padding: 40px 0; }
+.status-text { margin-top: 20px; }
+.tip { font-size: 12px; color: #909399; margin-top: 5px; }
+
+.result-panel { padding: 20px; }
+
+.footer-actions { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+.text-danger { color: #f56c6c; font-size: 13px; font-weight: bold; }
 </style>
