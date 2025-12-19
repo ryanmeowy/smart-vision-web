@@ -290,11 +290,11 @@ body {
 }
 
 .search-button {
-  border-radius: 0 24px 24px 0;
+  border-radius: 24px;
   background-color: #303134;
   color: #e8eaed;
   border: none;
-  padding: 0 24px;
+  padding: 0 15px;
   cursor: pointer;
   transition: background-color 0.2s;
   display: flex;
@@ -327,7 +327,19 @@ body {
 }
 
 .search-button:hover:not(:disabled) {
-  background-color: #3c4043;
+  border-color: transparent; /* 隐藏原始物理边框 */
+  color: #fff;
+
+  /* 双层背景实现渐变边框：
+     第一层：内部背景色 (深灰)
+     第二层：边框渐变色 (Google 四色彩虹)
+  */
+  background-image:
+      linear-gradient(#303134, #303134),
+      linear-gradient(135deg, #4285f4, #34a853, #fbbc05, #ea4335);
+
+  /* 外部光晕 (蓝色系，增强科技感) */
+  box-shadow: 0 0 12px rgba(66, 133, 244);
 }
 
 .search-button:disabled {
@@ -337,22 +349,42 @@ body {
 
 /* 自定义上传按钮样式 - 更深的颜色 */
 .custom-upload-btn {
-  border-radius: 24px;
-  background-color: #3c4043; /* 更深的灰色 */
+  position: relative;
+  padding: 0 16px;
+  /* 默认背景：深灰，与搜索框区分开 */
+  background-color: #434549;
   color: #e8eaed;
-  border: none;
-  padding: 0 24px;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 24px;
   cursor: pointer;
-  transition: background-color 0.2s;
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
-  white-space: nowrap;
+
+  /* 默认边框：细灰线 */
+  border: 1px solid #5f6368;
+  /* 关键：设置背景裁剪，为渐变做准备 */
+  background-clip: padding-box, border-box;
+  background-origin: border-box;
+  transition: all 0.3s ease;
+  z-index: 1;
 }
 
 .custom-upload-btn:hover {
-  background-color: #5f6368; /* 悬停时稍微亮一点 */
+  border-color: transparent; /* 隐藏原始物理边框 */
+  color: #fff;
+
+  /* 双层背景实现渐变边框：
+     第一层：内部背景色 (深灰)
+     第二层：边框渐变色 (Google 四色彩虹)
+  */
+  background-image:
+      linear-gradient(#303134, #303134),
+      linear-gradient(135deg, #4285f4, #34a853, #fbbc05, #ea4335);
+
+  /* 外部光晕 (蓝色系，增强科技感) */
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
 }
 
 /* 瀑布流样式 (核心) */
