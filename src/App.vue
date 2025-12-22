@@ -41,7 +41,7 @@
       <!-- 纯CSS瀑布流布局 -->
       <div class="waterfall" v-else>
         <div class="waterfall-item" v-for="item in results" :key="item.id">
-          <div class="image-card">
+          <div class="image-card" @mouseenter="handleMouseEnter(item)" @mouseleave="handleMouseLeave">
             <div class="image-wrapper">
               <!-- 图片点击预览 -->
               <el-image 
@@ -57,6 +57,15 @@
               <!-- 显示匹配分数 (Score) -->
               <div class="score-tag">
                 匹配度: {{ (item.score * 100).toFixed(0) }}%
+              </div>
+              <!-- 相似图片搜索提示 -->
+              <div 
+                v-if="hoveredItemId === item.id" 
+                class="similar-search-tip" 
+                :class="{ 'show': hoveredItemId === item.id }"
+                @click="searchSimilarImages(item)"
+              >
+                查找相似图片
               </div>
             </div>
             
@@ -92,6 +101,8 @@ const queryText = ref('')
 const searching = ref(false)
 const results = ref([])
 const uploadDialogRef = ref(null)
+const hoveredItemId = ref(null)
+const searchingSimilar = ref(false)
 
 // --- 动作 1: 打开上传弹窗 ---
 const openUpload = () => {
@@ -123,6 +134,46 @@ const handleSearch = async () => {
     ElMessage.error('搜索请求失败，请检查后端是否启动')
   } finally {
     searching.value = false
+  }
+}
+
+// --- 动作 3: 鼠标悬停事件 ---
+const handleMouseEnter = (item) => {
+  hoveredItemId.value = item.id
+}
+
+// --- 动作 4: 鼠标离开事件 ---
+const handleMouseLeave = () => {
+  hoveredItemId.value = null
+}
+
+// --- 动作 5: 查找相似图片 ---
+const searchSimilarImages = async (item) => {
+  if (searchingSimilar.value) return
+  
+  searchingSimilar.value = true
+  try {
+    // 调用后端相似图片搜索接口
+    const res = await axios.get('/api/v1/vision/similar', {
+      params: { 
+        imageId: item.id,
+        limit: 20 
+      }
+    })
+    
+    // 更新结果
+    results.value = res.data.data || []
+    
+    if (results.value.length === 0) {
+      ElMessage.info('未找到相似图片')
+    } else {
+      ElMessage.success(`找到了 ${results.value.length} 张相似图片`)
+    }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('查找相似图片失败')
+  } finally {
+    searchingSimilar.value = false
   }
 }
 
@@ -219,13 +270,13 @@ onMounted(() => {
 /* 全局样式重置 */
 body { 
   margin: 0; 
-  background-color: #202124; /* Google暗夜模式背景色 */
+  background-color: #1a1a1a; /* 更深的背景色 */
   font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', Arial, sans-serif; 
   color: #e8eaed;
 }
 
 .app-container { 
-  max-width: 1200px; 
+  max-width: 1400px; 
   margin: 0 auto; 
   padding: 20px; 
 }
@@ -239,16 +290,18 @@ body {
 .logo { 
   font-size: 28px; 
   font-weight: bold; 
-  color: #e8eaed; /* Google暗夜模式文字颜色 */
+  color: #ffffff; /* 更亮的文字颜色 */
   margin-bottom: 20px; 
+  letter-spacing: 1px;
 }
 .tag { 
   font-size: 14px; 
-  background: #303134; /* Google暗夜模式元素背景色 */
-  color: #9aa0a6; /* Google暗夜模式次要文字颜色 */
-  padding: 2px 8px; 
-  border-radius: 4px; 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 12px; 
+  border-radius: 20px; 
   vertical-align: middle; 
+  font-weight: 500;
 }
 
 .search-bar { 
@@ -268,42 +321,45 @@ body {
 .custom-search-input {
   flex: 1;
   display: flex;
-  border-radius: 24px;
-  background-color: #303134;
-  border: 1px solid #5f6368;
+  border-radius: 30px;
+  background-color: #2d2d2d;
+  border: 1px solid #444;
   padding: 2px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 .search-input {
   flex: 1;
-  background-color: #303134;
+  background-color: transparent;
   color: #e8eaed;
   border: none;
   outline: none;
-  padding: 12px 16px;
-  border-radius: 24px 0 0 24px;
-  font-size: 14px;
+  padding: 15px 20px;
+  border-radius: 30px 0 0 30px;
+  font-size: 15px;
 }
 
 .search-input::placeholder {
-  color: #9aa0a6;
+  color: #aaa;
 }
 
 .search-button {
-  border-radius: 24px;
-  background-color: #303134;
-  color: #e8eaed;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
   border: none;
-  padding: 0 15px;
+  padding: 0 25px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 15px;
 }
 
 .magic-wand {
-  font-size: 16px;
+  font-size: 18px;
   animation: sparkle 2s ease-in-out infinite;
 }
 
@@ -327,19 +383,8 @@ body {
 }
 
 .search-button:hover:not(:disabled) {
-  border-color: transparent; /* 隐藏原始物理边框 */
-  color: #fff;
-
-  /* 双层背景实现渐变边框：
-     第一层：内部背景色 (深灰)
-     第二层：边框渐变色 (Google 四色彩虹)
-  */
-  background-image:
-      linear-gradient(#303134, #303134),
-      linear-gradient(135deg, #4285f4, #34a853, #fbbc05, #ea4335);
-
-  /* 外部光晕 (蓝色系，增强科技感) */
-  box-shadow: 0 0 12px rgba(66, 133, 244);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .search-button:disabled {
@@ -347,72 +392,59 @@ body {
   cursor: not-allowed;
 }
 
-/* 自定义上传按钮样式 - 更深的颜色 */
+/* 自定义上传按钮样式 */
 .custom-upload-btn {
   position: relative;
-  padding: 0 16px;
-  /* 默认背景：深灰，与搜索框区分开 */
-  background-color: #434549;
-  color: #e8eaed;
+  padding: 0 20px;
+  background: linear-gradient(135deg, #fbd793 0%, #f5576c 100%);
+  color: white;
   font-size: 15px;
   font-weight: 500;
-  border-radius: 24px;
+  border-radius: 30px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
-
-  /* 默认边框：细灰线 */
-  border: 1px solid #5f6368;
-  /* 关键：设置背景裁剪，为渐变做准备 */
-  background-clip: padding-box, border-box;
-  background-origin: border-box;
+  gap: 8px;
+  border: none;
   transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
   z-index: 1;
 }
 
 .custom-upload-btn:hover {
-  border-color: transparent; /* 隐藏原始物理边框 */
-  color: #fff;
-
-  /* 双层背景实现渐变边框：
-     第一层：内部背景色 (深灰)
-     第二层：边框渐变色 (Google 四色彩虹)
-  */
-  background-image:
-      linear-gradient(#303134, #303134),
-      linear-gradient(135deg, #4285f4, #34a853, #fbbc05, #ea4335);
-
-  /* 外部光晕 (蓝色系，增强科技感) */
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
 }
 
 /* 瀑布流样式 (核心) */
 .waterfall {
   /* 分列：大屏4列，中屏3列... */
   column-count: 4; 
-  column-gap: 20px;
+  column-gap: 24px;
 }
-@media (max-width: 1200px) { .waterfall { column-count: 3; } }
-@media (max-width: 768px) { .waterfall { column-count: 2; } }
+@media (max-width: 1400px) { .waterfall { column-count: 3; } }
+@media (max-width: 1024px) { .waterfall { column-count: 2; } }
+@media (max-width: 768px) { .waterfall { column-count: 1; column-gap: 20px; } }
 
 .waterfall-item {
   /* 防止卡片被拆分到两列 */
   break-inside: avoid;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 /* 新增图片卡片样式 */
 .image-card {
-  border-radius: 8px;
+  border-radius: 16px;
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  background: #303134;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  background: #2d2d2d;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  position: relative;
 }
 
 .image-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
 /* 卡片内部样式 */
@@ -420,57 +452,114 @@ body {
   position: relative; 
   width: 100%; 
   min-height: 100px;
+  overflow: hidden;
 }
-.card-img { width: 100%; display: block; }
+.card-img { 
+  width: 100%; 
+  display: block; 
+  transition: transform 0.5s ease;
+}
+.image-card:hover .card-img {
+  transform: scale(1.05);
+}
+
 .score-tag {
-  position: absolute; top: 8px; right: 8px;
-  background: rgba(0,0,0,0.6); color: #fff;
-  font-size: 12px; padding: 2px 6px; border-radius: 4px;
-}
-.card-info { padding: 10px; background: #303134; }
-.ocr-text {
+  position: absolute; 
+  top: 16px;
+  right: 16px;
+  background: linear-gradient(135deg, rgb(147, 196, 251) 0%, rgb(192, 87, 245) 100%);
+  color: #fff;
   font-size: 12px; 
-  color: #9aa0a6; 
-  margin: 0 0 5px 0;
+  padding: 2px 8px;
+  border-radius: 16px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.similar-search-tip {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%) translateY(10px);
+}
+
+.similar-search-tip.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.similar-search-tip:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateX(-50%) scale(1.05);
+}
+
+.card-info { 
+  padding: 20px; 
+  background: #2d2d2d; 
+}
+
+.ocr-text {
+  font-size: 13px; 
+  color: #bbb; 
+  margin: 0 0 12px 0;
   display: flex;
   align-items: center;
+  line-height: 1.5;
 }
 
 .filename { 
-  font-size: 13px; 
-  color: #e8eaed; 
+  font-size: 15px; 
+  color: #ffffff; 
   margin: 0; 
   white-space: nowrap; 
   overflow: hidden; 
   text-overflow: ellipsis; 
+  font-weight: 500;
 }
 
-.empty-state { margin-top: 100px; }
+.empty-state { 
+  margin-top: 100px; 
+}
 
 /* 自定义标签样式 */
 .custom-tag {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: 4px 12px;
   font-size: 12px;
-  border-radius: 12px; /* 更圆的圆角 */
+  border-radius: 20px;
   line-height: 1;
-  margin-right: 6px;
-  background: transparent; /* 去掉背景色 */
-  border: 1px solid #8ab4f8; /* 淡蓝色边框 */
-  color: #8ab4f8; /* 淡蓝色文字 */
+  margin-right: 8px;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
   flex-shrink: 0;
+  font-weight: 500;
 }
 
 .custom-tag.warning {
-  background: transparent;
-  color: #8ab4f8;
-  border: 1px solid #8ab4f8;
+  background: linear-gradient(135deg, #93c4fb 0%, #fbd793 100%);
+  color: white;
 }
 
 /* Empty状态样式 */
 :deep(.el-empty) {
-  background-color: #202124;
+  background-color: #1a1a1a;
 }
 :deep(.el-empty__description) {
   color: #9aa0a6;
@@ -485,6 +574,14 @@ body {
   .custom-upload-btn {
     width: fit-content;
     align-self: center;
+  }
+  
+  .app-container {
+    padding: 15px;
+  }
+  
+  .header {
+    margin-bottom: 30px;
   }
 }
 </style>

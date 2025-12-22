@@ -174,6 +174,19 @@ defineExpose({ open })
 
 // --- 1. 文件选择 ---
 const handleFileSelect = (uploadFile) => {
+  // 检查文件大小 (限制为10MB)
+  const maxSize = 10 * 1024 * 1024 // 10MB in bytes
+  if (uploadFile.raw.size > maxSize) {
+    customFileList.value.push({
+      file: uploadFile.raw,
+      status: 'error',
+      uploadPercent: 0,
+      objectKey: '',
+      errorMsg: '文件大小超过10MB限制'
+    })
+    return
+  }
+  
   customFileList.value.push({
     file: uploadFile.raw,
     status: 'ready', // 初始状态
@@ -192,18 +205,46 @@ const initOssClient = async () => {
         'X-Access-Token': accessToken.value
       }
     })
+    
+    // 检查响应状态
+    if (res.status !== 200) {
+      ElMessage.error(`获取STS凭证失败，HTTP状态码: ${res.status}`)
+      return false
+    }
+    
     const data = res.data.data
+    
+    // 检查返回的数据是否完整
+    if (!data || !data.accessKeyId || !data.accessKeySecret || !data.securityToken) {
+      ElMessage.error('STS凭证信息不完整')
+      console.error('STS返回数据:', data)
+      return false
+    }
+    
     ossClient = new OSS({
       region: 'oss-cn-shanghai', // 请确保和后端配置一致
       accessKeyId: data.accessKeyId,
       accessKeySecret: data.accessKeySecret,
       stsToken: data.securityToken,
-      bucket: 'your-bucket-name', // 这里替换成你真实的 Bucket 名字
+      bucket: 'ryansimg', // 这里替换成你真实的 Bucket 名字
       secure: true
     })
     return true
   } catch (e) {
-    ElMessage.error('无法获取上传凭证，请检查后端服务或口令是否正确')
+    console.error('获取STS凭证异常:', e)
+    if (e.response) {
+      // 服务器返回了错误响应
+      ElMessage.error(`获取上传凭证失败: ${e.response.status} - ${e.response.statusText}`)
+      if (e.response.status === 403) {
+        ElMessage.error('访问被拒绝，请检查您的访问令牌是否正确以及是否有足够权限')
+      }
+    } else if (e.request) {
+      // 请求发出但没有收到响应
+      ElMessage.error('无法连接到服务器获取上传凭证，请检查网络连接')
+    } else {
+      // 其他错误
+      ElMessage.error(`初始化上传客户端失败: ${e.message}`)
+    }
     return false
   }
 }
@@ -287,9 +328,37 @@ const uploadToOss = async (items) => {
       item.objectKey = result.name
       item.status = 'oss_success'
     } catch (e) {
-      console.error(e)
+      console.error('OSS上传失败:', e)
       item.status = 'error'
-      item.errorMsg = '网络传输失败'
+      
+      // 提供更具体的错误信息
+      if (e.code) {
+        switch(e.code) {
+          case 'AccessDenied':
+            item.errorMsg = '访问被拒绝，请检查权限配置'
+            break
+          case 'InvalidAccessKeyId':
+            item.errorMsg = 'AccessKeyId无效'
+            break
+          case 'RequestTimeTooSkewed':
+            item.errorMsg = '客户端时间与服务器时间相差过大'
+            break
+          case 'SignatureDoesNotMatch':
+            item.errorMsg = '签名错误'
+            break
+          default:
+            item.errorMsg = `上传失败: ${e.code}`
+        }
+      } else {
+        item.errorMsg = '网络传输失败或服务器拒绝访问'
+      }
+      
+      console.error('详细错误信息:', {
+        code: e.code,
+        message: e.message,
+        name: e.name,
+        status: e.status
+      })
     }
   })
 
@@ -346,9 +415,18 @@ const processInBackend = async (items) => {
 
     } catch (e) {
       // 如果整个请求挂了 (500/网络断了)
+      console.error('后端处理请求失败:', e)
       chunk.forEach(it => {
         it.status = 'error'
-        it.errorMsg = '服务器连接失败'
+        if (e.response) {
+          if (e.response.status === 403) {
+            it.errorMsg = '服务器拒绝访问，请检查令牌权限'
+          } else {
+            it.errorMsg = `服务器错误: ${e.response.status}`
+          }
+        } else {
+          it.errorMsg = '服务器连接失败'
+        }
       })
       processedCount.value += chunk.length
     }
