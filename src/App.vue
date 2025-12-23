@@ -67,6 +67,11 @@
               >
                 查找相似图片
               </div>
+              <div class="card-actions">
+                <button class="ai-action-btn" @click.stop="openAiGen(item)" title="AI 生成文案">
+                  <el-icon><MagicStick /></el-icon>
+                </button>
+              </div>
             </div>
             
             <div class="card-info">
@@ -85,16 +90,20 @@
 
     <!-- 引入上传组件 -->
     <BatchUploadDialog ref="uploadDialogRef" />
+    <GenCopyDialog ref="genDialogRef" />
+
   </div>
 </template>
 
 <script setup>
 import {onMounted, ref} from 'vue'
-import {Loading, UploadFilled} from '@element-plus/icons-vue'
+import {Loading, MagicStick, UploadFilled} from '@element-plus/icons-vue'
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
 // 引入我们的组件
 import BatchUploadDialog from './components/BatchUploadDialog.vue'
+import GenCopyDialog from './components/GenCopyDialog.vue'
+const genDialogRef = ref(null)
 
 // --- 状态 ---
 const queryText = ref('')
@@ -264,6 +273,16 @@ const loadMockData = () => {
 onMounted(() => {
   loadMockData()
 })
+
+const openAiGen = (item) => {
+  // 假设 item.id 就是 Object Key，或者你的 DTO 里有 key 字段
+  // 如果没有，你得在后端 SearchResultDTO 里把 key (url的path部分) 透传回来
+  // 现在的 item.url 是签名过的长链接，提取 key 有点麻烦，建议后端 DTO 加一个 `objectKey` 字段
+
+  // 临时方案：假设后端还没改，我们假装 item.filename 是 key (实际需要后端配合)
+  const key = item.filename; // ⚠️ 这里需要后端配合返回真实的 OSS Key
+  genDialogRef.value.open(item.url, key)
+}
 </script>
 
 <style>
@@ -556,6 +575,29 @@ body {
   background: linear-gradient(135deg, #93c4fb 0%, #fbd793 100%);
   color: white;
 }
+
+.image-wrapper { position: relative; }
+
+.card-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.image-card:hover .card-actions { opacity: 1; }
+
+.ai-action-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.ai-action-btn:hover { background: #8a5cf6; border-color: #8a5cf6; }
 
 /* Empty状态样式 */
 :deep(.el-empty) {
