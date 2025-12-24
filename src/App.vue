@@ -103,6 +103,7 @@ import {ElMessage} from 'element-plus'
 // 引入我们的组件
 import BatchUploadDialog from './components/BatchUploadDialog.vue'
 import GenCopyDialog from './components/GenCopyDialog.vue'
+
 const genDialogRef = ref(null)
 
 // --- 状态 ---
@@ -281,7 +282,13 @@ const openAiGen = (item) => {
 
   // 临时方案：假设后端还没改，我们假装 item.filename 是 key (实际需要后端配合)
   const key = item.filename; // ⚠️ 这里需要后端配合返回真实的 OSS Key
-  genDialogRef.value.open(item.url, key)
+
+  // 准备标签数据
+  const tags = []
+  if (item.ocrText) tags.push(item.ocrText)
+  if (item.filename) tags.push(item.filename)
+
+  genDialogRef.value.open(item.url, key, tags)
 }
 </script>
 
@@ -535,21 +542,23 @@ body {
 
 .ocr-text {
   font-size: 13px; 
-  color: #bbb; 
-  margin: 0 0 12px 0;
-  display: flex;
-  align-items: center;
+  color: #cbd5e1;
+  margin: 0 0 10px 0;
   line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .filename { 
-  font-size: 15px; 
-  color: #ffffff; 
-  margin: 0; 
+  font-size: 14px;
+  color: #f1f5f9;
+  margin: 0;
   white-space: nowrap; 
   overflow: hidden; 
   text-overflow: ellipsis; 
   font-weight: 500;
+  line-height: 1.4;
 }
 
 .empty-state { 
@@ -560,19 +569,19 @@ body {
 .custom-tag {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
-  font-size: 12px;
-  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  border-radius: 12px;
   line-height: 1;
-  margin-right: 8px;
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
   color: white;
   flex-shrink: 0;
   font-weight: 500;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
 }
 
 .custom-tag.warning {
-  background: linear-gradient(135deg, #93c4fb 0%, #fbd793 100%);
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
   color: white;
 }
 
@@ -581,7 +590,7 @@ body {
 .card-actions {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
   opacity: 0;
   transition: opacity 0.2s;
 }
