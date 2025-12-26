@@ -212,8 +212,9 @@ const initOssClient = async () => {
       ElMessage.error(`获取STS凭证失败，HTTP状态码: ${res.status}`)
       return false
     }
-    
-    const data = decrypt(res.data.data)
+
+    // const data = decrypt(res.data.data)
+    const data = res.data.data
 
     // 检查返回的数据是否完整
     if (!data || !data.accessKeyId || !data.accessKeySecret || !data.securityToken) {

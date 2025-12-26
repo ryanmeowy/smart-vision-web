@@ -96,7 +96,7 @@
 </template>
 
 <script setup>
-import {onMounted, ref} from 'vue'
+import {ref} from 'vue'
 import {Loading, MagicStick, UploadFilled} from '@element-plus/icons-vue'
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
@@ -126,11 +126,8 @@ const handleSearch = async () => {
   searching.value = true
   try {
     // 调用后端搜索接口
-    const res = await axios.get('/api/v1/vision/search', {
-      params: { 
-        text: queryText.value,
-        limit: 20 
-      }
+    const res = await axios.post('/api/v1/vision/search', {
+      keyword: queryText.value
     })
     
     // 结果赋值
@@ -271,9 +268,9 @@ const loadMockData = () => {
 }
 
 // 页面加载时显示mock数据
-onMounted(() => {
-  loadMockData()
-})
+// onMounted(() => {
+//   loadMockData()
+// })
 
 const openAiGen = (item) => {
   // 假设 item.id 就是 Object Key，或者你的 DTO 里有 key 字段
