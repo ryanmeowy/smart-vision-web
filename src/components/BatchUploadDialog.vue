@@ -131,6 +131,7 @@ import {UploadFilled} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import axios from 'axios'
 import OSS from 'ali-oss'
+import { decrypt } from '../utils/crypto'
 
 // --- 数据结构定义 ---
 // phase: 'IDLE' (空闲) -> 'UPLOADING' (直传OSS中) -> 'PROCESSING' (后端分批处理中) -> 'FINISHED' (结束)
@@ -211,9 +212,10 @@ const initOssClient = async () => {
       ElMessage.error(`获取STS凭证失败，HTTP状态码: ${res.status}`)
       return false
     }
-    
+
+    // const data = decrypt(res.data.data)
     const data = res.data.data
-    
+
     // 检查返回的数据是否完整
     if (!data || !data.accessKeyId || !data.accessKeySecret || !data.securityToken) {
       ElMessage.error('STS凭证信息不完整')
