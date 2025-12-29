@@ -10,9 +10,9 @@
         <div class="search-container">
           <!-- 自定义搜索框 -->
           <div class="custom-search-input">
-            <input 
-              v-model="queryText" 
-              placeholder="描述你想找的图片，例如：'雨后的森林' 或 '带文字的合同'" 
+            <input
+              v-model="queryText"
+              placeholder="描述你想找的图片，例如：'雨后的森林' 或 '带文字的合同'"
               class="search-input"
               @keyup.enter="handleSearch"
             />
@@ -171,8 +171,7 @@ const searchSimilarImages = async (item) => {
     // 调用后端相似图片搜索接口
     const res = await axios.get('/api/v1/vision/similar', {
       params: { 
-        imageId: item.id,
-        limit: 20 
+        id: item.id
       }
     })
     
