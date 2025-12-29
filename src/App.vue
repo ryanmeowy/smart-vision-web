@@ -67,11 +67,11 @@
               >
                 查找相似图片
               </div>
-              <div class="card-actions">
-                <button class="ai-action-btn" @click.stop="openAiGen(item)" title="AI 生成文案">
-                  <el-icon><MagicStick /></el-icon>
-                </button>
-              </div>
+<!--              <div class="card-actions">-->
+<!--                <button class="ai-action-btn" @click.stop="openAiGen(item)" title="AI 生成文案">-->
+<!--                  <el-icon><MagicStick /></el-icon>-->
+<!--                </button>-->
+<!--              </div>-->
             </div>
             
             <div class="card-info">
@@ -318,22 +318,38 @@ const showTooltip = (event, text) => {
     word-wrap: break-word;
     white-space: normal;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: left 0.1s ease, top 0.1s ease;
   `
 
-  // 设置位置
-  const rect = event.target.getBoundingClientRect()
-  tooltip.style.left = (rect.left + window.scrollX) + 'px'
-  tooltip.style.top = (rect.bottom + window.scrollY + 5) + 'px'
+  // 设置位置到鼠标指针下方
+  tooltip.style.left = (event.clientX + 10) + 'px'
+  tooltip.style.top = (event.clientY + 10) + 'px'
 
   // 添加到页面
   document.body.appendChild(tooltip)
   event.target.tooltip = tooltip
+  
+  // 添加鼠标移动事件监听，让tooltip跟随鼠标
+  const handleMouseMove = (e) => {
+    tooltip.style.left = (e.clientX + 10) + 'px'
+    tooltip.style.top = (e.clientY + 10) + 'px'
+  }
+  
+  // 将事件监听器附加到目标元素
+  event.target.mouseMoveHandler = handleMouseMove
+  event.target.addEventListener('mousemove', handleMouseMove)
 }
 
 const hideTooltip = (event) => {
   if (event.target.tooltip) {
     document.body.removeChild(event.target.tooltip)
     event.target.tooltip = null
+  }
+  
+  // 移除鼠标移动事件监听器
+  if (event.target.mouseMoveHandler) {
+    event.target.removeEventListener('mousemove', event.target.mouseMoveHandler)
+    event.target.mouseMoveHandler = null
   }
 }
 </script>
