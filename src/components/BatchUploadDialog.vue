@@ -213,8 +213,8 @@ const initOssClient = async () => {
       return false
     }
 
-    // const data = decrypt(res.data.data)
-    const data = res.data.data
+    const data = decrypt(res.data.data)
+    // const data = res.data.data
 
     // 检查返回的数据是否完整
     if (!data || !data.accessKeyId || !data.accessKeySecret || !data.securityToken) {

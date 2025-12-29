@@ -10,9 +10,9 @@
         <div class="search-container">
           <!-- 自定义搜索框 -->
           <div class="custom-search-input">
-            <input 
-              v-model="queryText" 
-              placeholder="描述你想找的图片，例如：'雨后的森林' 或 '带文字的合同'" 
+            <input
+              v-model="queryText"
+              placeholder="描述你想找的图片，例如：'雨后的森林' 或 '带文字的合同'"
               class="search-input"
               @keyup.enter="handleSearch"
             />
@@ -75,13 +75,21 @@
             </div>
             
             <div class="card-info">
-              <!-- 显示OCR文字摘要(如果有) -->
-              <p class="ocr-text" v-if="item.ocrText">
-                <span class="custom-tag warning">含文字</span>
-                {{ item.ocrText }}
-              </p>
-              <!-- 文件名 -->
-              <p class="filename">{{ item.filename || '未命名图片' }}</p>
+              <div class="info-line">
+                <!-- 显示OCR文字摘要(如果有) -->
+                <span class="ocr-text-inline" v-if="item.ocrText">
+                  <span class="custom-tag warning">含文字</span>
+                  <span class="ocr-text-content" @mouseenter="showTooltip($event, item.ocrText)" @mouseleave="hideTooltip">
+                    {{ item.ocrText.length > 6 ? item.ocrText.substring(0, 6) + '...' : item.ocrText }}
+                  </span>
+                </span>
+                <!-- 文件名 -->
+                <span class="filename-inline" :class="{ 'filename-left': !item.ocrText }">{{ item.filename || '未命名图片' }}</span>
+              </div>
+              <!-- 显示标签(如果有) -->
+              <div class="tags-line" v-if="item.tags && item.tags.length > 0">
+                <span class="tag-item" v-for="tag in item.tags" :key="tag">{{ tag }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -96,7 +104,7 @@
 </template>
 
 <script setup>
-import {ref} from 'vue'
+import {onMounted, ref} from 'vue'
 import {Loading, MagicStick, UploadFilled} from '@element-plus/icons-vue'
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
@@ -163,8 +171,7 @@ const searchSimilarImages = async (item) => {
     // 调用后端相似图片搜索接口
     const res = await axios.get('/api/v1/vision/similar', {
       params: { 
-        imageId: item.id,
-        limit: 20 
+        id: item.id
       }
     })
     
@@ -192,14 +199,16 @@ const loadMockData = () => {
       url: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
       score: 0.95, 
       filename: 'mountain-landscape.jpg',
-      ocrText: '自然风景照片'
+      ocrText: '自然风景照片',
+      tags: ['自然', '风景', '山脉', '户外']
     },
     { 
       id: '2', 
       url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
       score: 0.87, 
       filename: 'forest-mist.jpg',
-      ocrText: '清晨的森林'
+      ocrText: '清晨的森林',
+      tags: ['森林', '晨雾', '树木', '自然']
     },
     { 
       id: '3', 
@@ -212,7 +221,8 @@ const loadMockData = () => {
       url: 'https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
       score: 0.92, 
       filename: 'river-valley.jpg',
-      ocrText: '河流与山谷'
+      ocrText: '河流与山谷',
+      tags: ['河流', '山谷', '水景', '自然']
     },
     { 
       id: '5', 
@@ -286,6 +296,45 @@ const openAiGen = (item) => {
   if (item.filename) tags.push(item.filename)
 
   genDialogRef.value.open(item.url, key, tags)
+}
+
+// 自定义tooltip功能
+const showTooltip = (event, text) => {
+  // 创建tooltip元素
+  const tooltip = document.createElement('div')
+  tooltip.className = 'custom-tooltip'
+  tooltip.textContent = text
+  tooltip.style.cssText = `
+    position: fixed;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    z-index: 10000;
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: 300px;
+    word-wrap: break-word;
+    white-space: normal;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  `
+
+  // 设置位置
+  const rect = event.target.getBoundingClientRect()
+  tooltip.style.left = (rect.left + window.scrollX) + 'px'
+  tooltip.style.top = (rect.bottom + window.scrollY + 5) + 'px'
+
+  // 添加到页面
+  document.body.appendChild(tooltip)
+  event.target.tooltip = tooltip
+}
+
+const hideTooltip = (event) => {
+  if (event.target.tooltip) {
+    document.body.removeChild(event.target.tooltip)
+    event.target.tooltip = null
+  }
 }
 </script>
 
@@ -533,32 +582,70 @@ body {
 }
 
 .card-info { 
-  padding: 20px; 
-  background: #2d2d2d; 
+  padding: 12px 16px;
+  background: #2d2d2d;
 }
 
-.ocr-text {
-  font-size: 13px; 
-  color: #cbd5e1;
-  margin: 0 0 10px 0;
-  line-height: 1.5;
+.info-line {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
+  line-height: 1.2;
 }
 
-.filename { 
-  font-size: 14px;
+.ocr-text-inline {
+  font-size: 11px;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ocr-text-content {
+  cursor: help;
+  position: relative;
+}
+
+.ocr-text-content:hover {
   color: #f1f5f9;
-  margin: 0;
-  white-space: nowrap; 
+}
+
+.filename-inline {
+  font-size: 12px;
+  color: #f1f5f9;
+  white-space: nowrap;
   overflow: hidden; 
   text-overflow: ellipsis; 
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.2;
+  margin-left: auto;
+  padding-left: 8px;
 }
 
-.empty-state { 
+.filename-inline.filename-left {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.tags-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.tag-item {
+  display: inline-block;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 1.2;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.empty-state {
   margin-top: 100px; 
 }
 
