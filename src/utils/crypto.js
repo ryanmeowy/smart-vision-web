@@ -7,15 +7,21 @@ const KEY = CryptoJS.enc.Base64.parse(BASE64_KEY)
 const IV = CryptoJS.enc.Base64.parse(BASE64_IV)
 
 export function decrypt(word) {
-    const encryptedHexStr = CryptoJS.enc.Base64.parse(word)
-    const srcs = CryptoJS.enc.Base64.stringify(encryptedHexStr)
+    try {
+        const decrypt = CryptoJS.AES.decrypt(word, KEY, {
+            iv: IV,
+            mode: CryptoJS.mode.CBC,
+            padding: CryptoJS.pad.Pkcs7
+        })
 
-    const decrypt = CryptoJS.AES.decrypt(srcs, KEY, {
-        iv: IV,
-        mode: CryptoJS.mode.CBC,
-        padding: CryptoJS.pad.Pkcs7
-    })
+        const decryptedStr = decrypt.toString(CryptoJS.enc.Utf8)
+        if (!decryptedStr) {
+            throw new Error('Decryption failed - empty result')
+        }
 
-    const decryptedStr = decrypt.toString(CryptoJS.enc.Utf8)
-    return JSON.parse(decryptedStr.toString())
+        return JSON.parse(decryptedStr)
+    } catch (error) {
+        console.error('Decrypt error:', error)
+        throw new Error('Failed to decrypt data')
+    }
 }
