@@ -18,8 +18,7 @@
             />
             <button @click="handleSearch" :disabled="searching" class="search-button">
               <span class="magic-wand">✨</span>
-              <el-icon v-if="searching" class="is-loading"><Loading /></el-icon>
-              <span>AI Search</span>
+              <span>{{ searching ? '搜索中...' : 'AI Search' }}</span>
             </button>
           </div>
           
@@ -33,7 +32,7 @@
     </header>
 
     <!-- 瀑布流内容区 -->
-    <main class="content" v-loading="searching">
+    <main class="content" :class="{ 'searching': searching }">
       <div v-if="results.length === 0 && !searching" class="empty-state">
         <el-empty description="输入文字开始搜索，或上传图片建立索引" />
       </div>
@@ -105,7 +104,7 @@
 
 <script setup>
 import {onMounted, ref} from 'vue'
-import {Loading, MagicStick, UploadFilled} from '@element-plus/icons-vue'
+import {MagicStick, UploadFilled} from '@element-plus/icons-vue'
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
 // 引入我们的组件
@@ -192,90 +191,90 @@ const searchSimilarImages = async (item) => {
 }
 
 // 添加mock数据
-const loadMockData = () => {
-  results.value = [
-    { 
-      id: '1', 
-      url: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
-      score: 0.95, 
-      filename: 'mountain-landscape.jpg',
-      ocrText: '自然风景照片',
-      tags: ['自然', '风景', '山脉', '户外']
-    },
-    { 
-      id: '2', 
-      url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
-      score: 0.87, 
-      filename: 'forest-mist.jpg',
-      ocrText: '清晨的森林',
-      tags: ['森林', '晨雾', '树木', '自然']
-    },
-    { 
-      id: '3', 
-      url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
-      score: 0.78, 
-      filename: 'colorful-sky.jpg'
-    },
-    { 
-      id: '4', 
-      url: 'https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
-      score: 0.92, 
-      filename: 'river-valley.jpg',
-      ocrText: '河流与山谷',
-      tags: ['河流', '山谷', '水景', '自然']
-    },
-    { 
-      id: '5', 
-      url: 'https://images.unsplash.com/photo-1418065460487-3e41a6c84dc5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
-      score: 0.85, 
-      filename: 'green-forest.jpg'
-    },
-    { 
-      id: '6', 
-      url: 'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
-      score: 0.76, 
-      filename: 'rocky-ocean.jpg'
-    },
-    { 
-      id: '7', 
-      url: 'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
-      score: 0.88, 
-      filename: 'colorful-clouds.jpg'
-    },
-    { 
-      id: '8', 
-      url: 'https://images.unsplash.com/photo-1439853949127-fa647821eba0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
-      score: 0.81, 
-      filename: 'sunset-pier.jpg',
-      ocrText: '夕阳下的码头'
-    },
-    { 
-      id: '9', 
-      url: 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
-      score: 0.93, 
-      filename: 'misty-forest.jpg'
-    },
-    { 
-      id: '10', 
-      url: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
-      score: 0.79, 
-      filename: 'mountain-lake.jpg'
-    },
-    { 
-      id: '11', 
-      url: 'https://images.unsplash.com/photo-1470240731273-7821a6eeb6bd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
-      score: 0.84, 
-      filename: 'autumn-forest.jpg'
-    },
-    { 
-      id: '12', 
-      url: 'https://images.unsplash.com/photo-1511497584788-876760111969?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80', 
-      score: 0.91, 
-      filename: 'beach-sand.jpg',
-      ocrText: '沙滩度假'
-    }
-  ]
-}
+// const loadMockData = () => {
+//   results.value = [
+//     {
+//       id: '1',
+//       url: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
+//       score: 0.95,
+//       filename: 'mountain-landscape.jpg',
+//       ocrText: '自然风景照片',
+//       tags: ['自然', '风景', '山脉', '户外']
+//     },
+//     {
+//       id: '2',
+//       url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
+//       score: 0.87,
+//       filename: 'forest-mist.jpg',
+//       ocrText: '清晨的森林',
+//       tags: ['森林', '晨雾', '树木', '自然']
+//     },
+//     {
+//       id: '3',
+//       url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
+//       score: 0.78,
+//       filename: 'colorful-sky.jpg'
+//     },
+//     {
+//       id: '4',
+//       url: 'https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
+//       score: 0.92,
+//       filename: 'river-valley.jpg',
+//       ocrText: '河流与山谷',
+//       tags: ['河流', '山谷', '水景', '自然']
+//     },
+//     {
+//       id: '5',
+//       url: 'https://images.unsplash.com/photo-1418065460487-3e41a6c84dc5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
+//       score: 0.85,
+//       filename: 'green-forest.jpg'
+//     },
+//     {
+//       id: '6',
+//       url: 'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
+//       score: 0.76,
+//       filename: 'rocky-ocean.jpg'
+//     },
+//     {
+//       id: '7',
+//       url: 'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
+//       score: 0.88,
+//       filename: 'colorful-clouds.jpg'
+//     },
+//     {
+//       id: '8',
+//       url: 'https://images.unsplash.com/photo-1439853949127-fa647821eba0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
+//       score: 0.81,
+//       filename: 'sunset-pier.jpg',
+//       ocrText: '夕阳下的码头'
+//     },
+//     {
+//       id: '9',
+//       url: 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
+//       score: 0.93,
+//       filename: 'misty-forest.jpg'
+//     },
+//     {
+//       id: '10',
+//       url: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
+//       score: 0.79,
+//       filename: 'mountain-lake.jpg'
+//     },
+//     {
+//       id: '11',
+//       url: 'https://images.unsplash.com/photo-1470240731273-7821a6eeb6bd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
+//       score: 0.84,
+//       filename: 'autumn-forest.jpg'
+//     },
+//     {
+//       id: '12',
+//       url: 'https://images.unsplash.com/photo-1511497584788-876760111969?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
+//       score: 0.91,
+//       filename: 'beach-sand.jpg',
+//       ocrText: '沙滩度假'
+//     }
+//   ]
+// }
 
 // 页面加载时显示mock数据
 // onMounted(() => {
@@ -714,6 +713,12 @@ body {
 }
 :deep(.el-empty__description) {
   color: #9aa0a6;
+}
+
+/* 搜索状态样式 */
+.content.searching {
+  opacity: 0.7;
+  pointer-events: none;
 }
 
 /* 响应式调整 */
