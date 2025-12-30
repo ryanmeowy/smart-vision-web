@@ -228,7 +228,7 @@ const initOssClient = async () => {
       accessKeyId: data.accessKeyId,
       accessKeySecret: data.accessKeySecret,
       stsToken: data.securityToken,
-      bucket: 'ryansimg', // 这里替换成你真实的 Bucket 名字
+      bucket: 'arg-image', // 这里替换成你真实的 Bucket 名字
       secure: true
     })
     return true
