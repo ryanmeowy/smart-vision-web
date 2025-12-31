@@ -92,6 +92,17 @@
             </div>
           </div>
         </div>
+
+        <!-- 加载更多指示器 -->
+        <div v-if="loadingMore" class="loading-more">
+          <div class="loading-spinner"></div>
+          <span>正在加载更多...</span>
+        </div>
+
+        <!-- 没有更多数据提示 -->
+        <div v-else-if="!hasMore && results.length > 0" class="no-more-data">
+          <span>没有更多数据了</span>
+        </div>
       </div>
     </main>
 
@@ -103,8 +114,8 @@
 </template>
 
 <script setup>
-import {onMounted, ref} from 'vue'
-import {MagicStick, UploadFilled} from '@element-plus/icons-vue'
+import {onMounted, onUnmounted, ref} from 'vue'
+import {UploadFilled} from '@element-plus/icons-vue'
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
 // 引入我们的组件
@@ -120,6 +131,12 @@ const results = ref([])
 const uploadDialogRef = ref(null)
 const hoveredItemId = ref(null)
 const searchingSimilar = ref(false)
+// 新增：瀑布流翻页相关状态
+const currentSearchKeyword = ref('') // 当前搜索会话的关键字
+const currentSortValues = ref([]) // 当前搜索会话的sortValues
+const loadingMore = ref(false) // 是否正在加载更多
+const hasMore = ref(true) // 是否还有更多数据
+const currentPage = ref(1) // 当前页码
 
 // --- 动作 1: 打开上传弹窗 ---
 const openUpload = () => {
@@ -127,20 +144,71 @@ const openUpload = () => {
 }
 
 // --- 动作 2: 执行搜索 ---
-const handleSearch = async () => {
+const handleSearch = async (isLoadMore = false) => {
   if (!queryText.value.trim()) return
   
-  searching.value = true
+  // 判断是否为新的搜索会话
+  const isNewSearch = !isLoadMore || currentSearchKeyword.value !== queryText.value
+
+  if (isNewSearch) {
+    // 新的搜索会话，重置状态
+    currentSearchKeyword.value = queryText.value
+    currentSortValues.value = []
+    currentPage.value = 1
+    results.value = []
+    hasMore.value = true
+    searching.value = true
+  } else {
+    // 继续当前搜索会话
+    loadingMore.value = true
+  }
+
   try {
+    // 构建请求参数
+    const requestParams = {
+      keyword: currentSearchKeyword.value
+    }
+
+    // 如果不是新的搜索会话且有sortValues，则传递sortValues
+    if (!isNewSearch && currentSortValues.value.length > 0) {
+      requestParams.searchAfter = currentSortValues.value
+    }
+
     // 调用后端搜索接口
-    const res = await axios.post('/api/v1/vision/search', {
-      keyword: queryText.value
-    })
-    
-    // 结果赋值
-    results.value = res.data.data || []
-    
-    if (results.value.length === 0) {
+    console.log('搜索请求参数:', requestParams) // 调试日志
+    const res = await axios.post('/api/v1/vision/search', requestParams)
+    console.log('搜索响应数据:', res.data) // 调试日志
+
+    const newResults = res.data.data || []
+
+    if (isNewSearch) {
+      // 新搜索，直接替换结果
+      results.value = newResults
+    } else {
+      // 加载更多，追加结果
+      results.value = [...results.value, ...newResults]
+    }
+
+    // 保存sortValues用于下次请求（获取最后一个元素的sortValues）
+    if (newResults.length > 0 && newResults[newResults.length - 1].sortValues) {
+      const lastSortValues = newResults[newResults.length - 1].sortValues
+      // 如果sortValues是对象，提取其值；如果是数组，直接使用
+      if (typeof lastSortValues === 'object' && !Array.isArray(lastSortValues)) {
+        // 假设对象的值就是需要的sortValues数组
+        currentSortValues.value = Object.values(lastSortValues)
+      } else {
+        currentSortValues.value = Array.isArray(lastSortValues) ? lastSortValues : [lastSortValues]
+      }
+      console.log('保存的sortValues:', currentSortValues.value) // 调试日志
+    }
+
+    // 更新页码
+    currentPage.value++
+
+    // 判断是否还有更多数据
+    hasMore.value = newResults.length > 0
+
+    if (isNewSearch && results.value.length === 0) {
       ElMessage.info('未找到相关图片')
     }
   } catch (e) {
@@ -148,6 +216,7 @@ const handleSearch = async () => {
     ElMessage.error('搜索请求失败，请检查后端是否启动')
   } finally {
     searching.value = false
+    loadingMore.value = false
   }
 }
 
@@ -276,10 +345,35 @@ const searchSimilarImages = async (item) => {
 //   ]
 // }
 
-// 页面加载时显示mock数据
-// onMounted(() => {
-//   loadMockData()
-// })
+// --- 动作 6: 加载更多 ---
+const loadMore = async () => {
+  if (loadingMore.value || !hasMore.value || !currentSearchKeyword.value) return
+  await handleSearch(true)
+}
+
+// --- 动作 7: 滚动事件处理 ---
+const handleScroll = () => {
+  // 检查是否滚动到底部附近
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+  const windowHeight = window.innerHeight
+  const documentHeight = document.documentElement.scrollHeight
+
+  // 当滚动到距离底部200px时触发加载更多
+  if (scrollTop + windowHeight >= documentHeight - 200) {
+    loadMore()
+  }
+}
+
+// 页面加载时添加滚动监听
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+  // loadMockData() // 如果需要mock数据可以取消注释
+})
+
+// 页面卸载时移除滚动监听
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
 
 const openAiGen = (item) => {
   // 假设 item.id 就是 Object Key，或者你的 DTO 里有 key 字段
@@ -503,20 +597,59 @@ body {
   box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
 }
 
-/* 瀑布流样式 (核心) */
+/* 竖向瀑布流样式 (经典Pinterest风格) */
 .waterfall {
-  /* 分列：大屏4列，中屏3列... */
-  column-count: 4; 
+  /* 使用CSS多列布局，竖向排列 */
+  column-count: 4;
   column-gap: 24px;
+  column-fill: balance;
 }
-@media (max-width: 1400px) { .waterfall { column-count: 3; } }
-@media (max-width: 1024px) { .waterfall { column-count: 2; } }
-@media (max-width: 768px) { .waterfall { column-count: 1; column-gap: 20px; } }
+
+@media (max-width: 1400px) {
+  .waterfall {
+    column-count: 3;
+    column-gap: 20px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .waterfall {
+    column-count: 2;
+    column-gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .waterfall {
+    column-count: 1;
+    column-gap: 12px;
+  }
+}
 
 .waterfall-item {
-  /* 防止卡片被拆分到两列 */
+  /* 防止卡片在列中被分割 */
   break-inside: avoid;
   margin-bottom: 24px;
+  display: inline-block;
+  width: 100%;
+}
+
+@media (max-width: 1400px) {
+  .waterfall-item {
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .waterfall-item {
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .waterfall-item {
+    margin-bottom: 12px;
+  }
 }
 
 /* 新增图片卡片样式 */
@@ -538,12 +671,11 @@ body {
 .image-wrapper { 
   position: relative; 
   width: 100%; 
-  min-height: 100px;
   overflow: hidden;
 }
 .card-img { 
   width: 100%; 
-  display: block; 
+  display: block;
   transition: transform 0.5s ease;
 }
 .image-card:hover .card-img {
@@ -719,6 +851,56 @@ body {
 .content.searching {
   opacity: 0.7;
   pointer-events: none;
+}
+
+/* 加载更多样式 */
+.loading-more {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 30px 20px;
+  color: #9aa0a6;
+  font-size: 14px;
+  margin-top: 24px;
+  background: #2d2d2d;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  break-inside: avoid; /* 防止在多列布局中被分割 */
+  column-span: all; /* 跨越所有列显示 */
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #333;
+  border-top: 2px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 没有更多数据样式 */
+.no-more-data {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px;
+  color: #666;
+  font-size: 14px;
+  opacity: 0.7;
+  margin-top: 24px;
+  background: #2d2d2d;
+  border-radius: 16px;
+  text-align: center;
+  break-inside: avoid; /* 防止在多列布局中被分割 */
+  column-span: all; /* 跨越所有列显示 */
 }
 
 /* 响应式调整 */
