@@ -175,9 +175,7 @@ const handleSearch = async (isLoadMore = false) => {
     }
 
     // 调用后端搜索接口
-    console.log('搜索请求参数:', requestParams) // 调试日志
     const res = await axios.post('/api/v1/vision/search', requestParams)
-    console.log('搜索响应数据:', res.data) // 调试日志
 
     const newResults = res.data.data || []
 
@@ -199,7 +197,6 @@ const handleSearch = async (isLoadMore = false) => {
       } else {
         currentSortValues.value = Array.isArray(lastSortValues) ? lastSortValues : [lastSortValues]
       }
-      console.log('保存的sortValues:', currentSortValues.value) // 调试日志
     }
 
     // 更新页码
@@ -599,39 +596,18 @@ body {
 
 /* 竖向瀑布流样式 (经典Pinterest风格) */
 .waterfall {
-  /* 使用CSS多列布局，竖向排列 */
+  /* 分列：大屏4列，中屏3列... */
   column-count: 4;
   column-gap: 24px;
-  column-fill: balance;
 }
-
-@media (max-width: 1400px) {
-  .waterfall {
-    column-count: 3;
-    column-gap: 20px;
-  }
-}
-
-@media (max-width: 1024px) {
-  .waterfall {
-    column-count: 2;
-    column-gap: 16px;
-  }
-}
-
-@media (max-width: 768px) {
-  .waterfall {
-    column-count: 1;
-    column-gap: 12px;
-  }
-}
+@media (max-width: 1400px) { .waterfall { column-count: 3; } }
+@media (max-width: 1024px) { .waterfall { column-count: 2; } }
+@media (max-width: 768px) { .waterfall { column-count: 1; column-gap: 20px; } }
 
 .waterfall-item {
-  /* 防止卡片在列中被分割 */
+  /* 防止卡片被拆分到两列 */
   break-inside: avoid;
   margin-bottom: 24px;
-  display: inline-block;
-  width: 100%;
 }
 
 @media (max-width: 1400px) {
@@ -668,9 +644,10 @@ body {
 }
 
 /* 卡片内部样式 */
-.image-wrapper { 
-  position: relative; 
-  width: 100%; 
+.image-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 100px;
   overflow: hidden;
 }
 .card-img { 
