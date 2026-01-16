@@ -131,7 +131,7 @@ import {UploadFilled} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import axios from 'axios'
 import OSS from 'ali-oss'
-import { decrypt } from '../utils/crypto'
+import {decrypt} from '../utils/crypto'
 
 // --- 数据结构定义 ---
 // phase: 'IDLE' (空闲) -> 'UPLOADING' (直传OSS中) -> 'PROCESSING' (后端分批处理中) -> 'FINISHED' (结束)
@@ -183,6 +183,7 @@ const handleFileSelect = (uploadFile) => {
       status: 'error',
       uploadPercent: 0,
       objectKey: '',
+      etag: '',      // ETag（MD5值），初始化为空
       errorMsg: '文件大小超过10MB限制'
     })
     return
@@ -193,6 +194,7 @@ const handleFileSelect = (uploadFile) => {
     status: 'ready', // 初始状态
     uploadPercent: 0,
     objectKey: '',   // 上传成功后填入
+    etag: '',      // ETag（MD5值），初始化为空
     errorMsg: ''
   })
 }
@@ -228,7 +230,7 @@ const initOssClient = async () => {
       accessKeyId: data.accessKeyId,
       accessKeySecret: data.accessKeySecret,
       stsToken: data.securityToken,
-      bucket: 'ryansimg', // 这里替换成你真实的 Bucket 名字
+      bucket: 'arg-image', // 这里替换成你真实的 Bucket 名字
       secure: true
     })
     return true
@@ -326,8 +328,9 @@ const uploadToOss = async (items) => {
         progress: (p) => { item.uploadPercent = Math.floor(p * 100) }
       })
 
-      // 成功，保存 Key
+      // 成功，保存 Key 和 ETag
       item.objectKey = result.name
+      item.etag = result.res.headers.etag.replace(/"/g, '')
       item.status = 'oss_success'
     } catch (e) {
       console.error('OSS上传失败:', e)
@@ -381,14 +384,14 @@ const processInBackend = async (items) => {
     // 先把这一批的状态改为处理中
     chunk.forEach(it => it.status = 'processing_backend')
 
-    // 构造请求参数 DTO: [{ key: "...", fileName: "..." }]
+      // 构造请求参数 DTO: [{ key: "...", fileName: "...", etag: "..." }]
     const payload = chunk.map(it => ({
       key: it.objectKey,
-      fileName: it.file.name
+      fileName: it.file.name,
+      fileHash: it.etag // 添加ETag（MD5值）
     }))
 
     try {
-      // 调用后端同步接口 (后端内部会重试)
       const res = await axios.post('/api/v1/image/batch-process', payload, {
         headers: {
           'X-Access-Token': accessToken.value
