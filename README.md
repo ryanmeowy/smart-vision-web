@@ -2,10 +2,10 @@
 
 > **SmartVision** 是一个基于 **Vue 3 + Vite + Element Plus** 构建的现代化 AI 搜索前端应用。它实现了“以文搜图”的核心交互，并包含一套完整的高并发图片批量入库、OSS 直传与错误重试机制。
 
-![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
-![Vue](https://img.shields.io/badge/Vue.js-3.x-green.svg)
-![Vite](https://img.shields.io/badge/Vite-5.x-purple.svg)
-![ElementPlus](https://img.shields.io/badge/Element%20Plus-2.x-409eff.svg)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Vue](https://img.shields.io/badge/Vue.js-3.5.24-green.svg)
+![Vite](https://img.shields.io/badge/Vite-7.2.4-purple.svg)
+![ElementPlus](https://img.shields.io/badge/Element%20Plus-2.12.0-409eff.svg)
 
 ## ✨ 核心功能 (Features)
 
@@ -22,16 +22,16 @@
 
 ## 🛠 技术栈 (Tech Stack)
 
-| 模块 | 技术选型 | 说明 |
-| :--- | :--- | :--- |
-| **框架** | Vue 3 (Composition API) | script setup 语法糖，更简洁的逻辑复用 |
-| **构建工具** | Vite | 秒级启动，极速 HMR |
-| **UI 组件库** | Element Plus | 企业级 UI 设计语言 |
-| **网络请求** | Axios | 拦截器封装，统一错误处理 |
-| **云存储 SDK** | ali-oss | 阿里云 OSS 浏览器端 SDK (用于直传) |
-| **样式** | CSS3 Flex / Grid | 纯 CSS 实现高性能瀑布流 |
+| 模块 | 技术选型 |
+| :--- | :--- |
+| **框架** | Vue 3 (Composition API) |
+| **构建工具** | Vite | 
+| **UI 组件库** | Element Plus | 
+| **网络请求** | Axios | 
+| **云存储 SDK** | ali-oss 
+| **样式** | CSS3 Flex / Grid | 
 
-## 📐 架构设计与亮点 (Architecture)
+## 📐 架构设计 (Architecture)
 
 ### 1. 客户端直传架构 (Client-Side Direct Upload)
 为了解决海量图片上传占用后端服务器带宽的问题，本项目采用了 **STS (Security Token Service)** 模式。
@@ -40,7 +40,7 @@
 *   上传成功后，仅将 Object Key 发送给后端进行 AI 分析。
 
 ### 2. 健壮的上传状态机
-在 `BatchUploadDialog` 组件中，我们维护了一个微型状态机来管理复杂的上传流程：
+在 `BatchUploadDialog` 组件中，维护了一个微型状态机来管理复杂的上传流程：
 *   `IDLE` (空闲/选择文件)
 *   `UPLOADING` (OSS 网络传输中)
 *   `PROCESSING` (后端 AI 向量化中 - 轮询)
@@ -91,14 +91,3 @@ src/
 ├── main.js             # 入口文件
 └── style.css           # 全局样式
 ```
-
-## 📸 演示截图 (Screenshots)
-1.瀑布流搜索页
-
-2.批量上传弹窗 (处理中)
-
-3.上传结果汇总 (含失败重试)
-## 🤝 贡献 (Contribution)
-欢迎提交 Issue 或 Pull Request。
-## 📄 许可证 (License)
-Apache License 2.0
