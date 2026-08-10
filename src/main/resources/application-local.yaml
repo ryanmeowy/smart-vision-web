@@ -1,9 +1,9 @@
 app:
   vector:
-    index-name: picseek_images_local
+    index-name: picindex_images
     indexVersion: v2
-    read-alias: picseek_images_local_read
-    write-alias: picseek_images_local_write
+    read-alias: picindex_images_read
+    write-alias: picindex_images_write
     dimension: 512
     model-type: LOCAL
   embedding:

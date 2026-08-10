@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package ai.inference;
 
-option java_package = "com.picseek.core.grpc";
+option java_package = "com.picindex.core.grpc";
 option java_outer_classname = "VisionProto";
 
 service VisionService {

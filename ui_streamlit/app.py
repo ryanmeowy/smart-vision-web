@@ -11,7 +11,7 @@ from pages import render_text_search_page
 from pages import render_vector_compare_page
 
 st.set_page_config(
-    page_title="PicSeek Frontend Validation",
+    page_title="PicIndex Frontend Validation",
     page_icon="🖼️",
     layout="wide",
 )
@@ -62,7 +62,7 @@ def write_streamlit_theme_config(theme_mode: str) -> None:
 
 def render_sidebar() -> str:
     with st.sidebar:
-        st.title("PicSeek")
+        st.title("PicIndex")
         st.caption("Streamlit validation UI")
         st.session_state.base_url = st.text_input(
             "Backend Base URL",
@@ -117,7 +117,7 @@ def main() -> None:
         write_streamlit_theme_config(st.session_state.theme_mode)
     current_page = render_sidebar()
 
-    st.title("PicSeek Frontend Validation")
+    st.title("PicIndex Frontend Validation")
     # st.caption("UI-TASK-05: pagination, resilience, and debugability")
     st.divider()
 

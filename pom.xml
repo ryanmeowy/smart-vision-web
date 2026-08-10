@@ -8,11 +8,11 @@
         <version>3.5.8</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.picseek</groupId>
-    <artifactId>picseek</artifactId>
+    <groupId>com.picindex</groupId>
+    <artifactId>picindex</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>picseek</name>
-    <description>picseek</description>
+    <name>picindex</name>
+    <description>picindex</description>
     <url/>
     <licenses>
         <license/>

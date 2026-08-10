@@ -1,9 +1,9 @@
 app:
   vector:
-    index-name: picseek_images_cloud
+    index-name: picindex_images_cloud
     indexVersion: v2
-    read-alias: picseek_images_cloud_read
-    write-alias: picseek_images_cloud_write
+    read-alias: picindex_images_cloud_read
+    write-alias: picindex_images_cloud_write
     dimension: 1024
     model-type: CLOUD
   embedding:
